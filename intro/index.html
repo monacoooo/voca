@@ -231,8 +231,11 @@ footer .q{font-size:clamp(22px,3.5vw,32px);font-weight:800;color:var(--ink);marg
 <script>
 (function(){var els=document.querySelectorAll('.reveal');
  if(!('IntersectionObserver' in window)){els.forEach(function(e){e.classList.add('in')});return;}
- var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.25});
- els.forEach(function(e){io.observe(e)});})();
+ // 사진 자신은 clip-path로 가려져 있어 감지되지 않으므로, 사진을 담은 부모(.wins)를 감지한다
+ var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.querySelectorAll('.reveal').forEach(function(r){r.classList.add('in')});io.unobserve(e.target)}})},{threshold:.2});
+ var seen=[];els.forEach(function(e){var p=e.parentNode;if(seen.indexOf(p)<0){seen.push(p);io.observe(p)}});
+ setTimeout(function(){els.forEach(function(e){e.classList.add('in')})},6000); // 안전장치: 6초 뒤엔 무조건 표시
+})();
 </script>
 </body>
 </html>
