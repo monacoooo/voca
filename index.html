@@ -13,8 +13,8 @@
     --sky1:#8EC9F2; --sky2:#E7F6FF; --gold:#F5A623;
   }
   *{box-sizing:border-box;}
-  body{margin:0;font-family:'Noto Sans KR',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--gray-100);color:var(--text);min-height:100vh;}
-  #app{max-width:720px;margin:0 auto;min-height:100vh;background:#fff;display:flex;flex-direction:column;box-shadow:0 0 24px rgba(0,0,0,0.05);}
+  body{margin:0;font-family:'Noto Sans KR',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--gray-100);color:var(--text);min-height:100vh;min-height:100dvh;}
+  #app{max-width:720px;margin:0 auto;min-height:100vh;min-height:100dvh;background:#fff;display:flex;flex-direction:column;box-shadow:0 0 24px rgba(0,0,0,0.05);}
 
   .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:2px solid var(--gray-200);position:sticky;top:0;background:#fff;z-index:10;flex-wrap:wrap;gap:6px;}
   .topbar .brand{font-weight:900;font-size:17px;color:var(--blue);display:flex;align-items:center;gap:6px;white-space:nowrap;}
@@ -28,6 +28,13 @@
   .welcome p{margin:0;color:var(--gray-700);font-size:13px;}
 
   .overview{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:14px 0;}
+  .day-status{margin:-6px 0 14px;display:flex;flex-direction:column;gap:6px;font-size:12px;}
+  .day-status .ds-row{display:flex;flex-wrap:wrap;align-items:center;gap:5px;}
+  .day-status .ds-label{font-weight:800;margin-right:2px;}
+  .day-status .ds-chip{padding:2px 9px;border-radius:999px;font-weight:700;background:var(--sky-tint);border:1px solid var(--sky-brand);}
+  .day-status .ds-chip.full{background:var(--success);border-color:var(--success);color:#fff;}
+  .day-status .ds-none{opacity:.6;}
+  .day-tag{font-size:11px;font-weight:700;margin-left:6px;opacity:.85;}
   .ov-card{background:var(--gray-100);border-radius:12px;padding:10px;text-align:center;}
   .ov-card .num{font-size:18px;font-weight:900;color:var(--green-dark);}
   .ov-card .label{font-size:10px;color:var(--gray-700);margin-top:2px;}
@@ -88,7 +95,7 @@
   .day-toggle-btn{width:100%;padding:10px;margin-top:2px;border-radius:12px;border:1px dashed var(--gray-400);background:transparent;font-size:12px;font-weight:700;color:var(--gray-700);cursor:pointer;font-family:inherit;}
 
   /* Session screen */
-  .session{display:none;flex-direction:column;min-height:100vh;}
+  .session{display:none;flex-direction:column;min-height:100vh;min-height:100dvh;}
   .session.active{display:flex;}
   .session-top{display:flex;align-items:center;gap:12px;padding:14px 18px;}
   .close-btn{background:none;border:none;font-size:22px;color:var(--gray-400);cursor:pointer;line-height:1;padding:4px;}
@@ -174,7 +181,7 @@
   .btn-check-wrong{background:var(--red);color:#fff;}
   .btn-outline{background:#fff;border:2px solid var(--gray-200);color:var(--gray-700);}
 
-  .summary{display:none;flex-direction:column;min-height:100vh;padding:20px;}
+  .summary{display:none;flex-direction:column;min-height:100vh;min-height:100dvh;padding:20px;}
   .summary.active{display:flex;}
 
   /* FlightComplete — Contrail takeoff celebration */
@@ -222,7 +229,7 @@
   .footer-note{font-size:10px;color:var(--gray-400);text-align:center;padding:14px;line-height:1.6;}
 
   /* Shop screen */
-  .shop{display:none;flex-direction:column;min-height:100vh;}
+  .shop{display:none;flex-direction:column;min-height:100vh;min-height:100dvh;}
   .shop.active{display:flex;}
   .shop-top{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:2px solid var(--gray-200);}
   .shop-title{font-weight:900;font-size:16px;}
@@ -267,7 +274,7 @@
   .goal-opt{padding:12px 4px;border:2px solid var(--gray-200);border-radius:10px;font-weight:800;font-size:14px;cursor:pointer;background:#fff;text-align:center;}
   .goal-opt.selected{border-color:var(--blue);background:#e8f7ff;color:var(--blue);}
   .goal-custom{display:flex;gap:8px;margin-bottom:16px;}
-  .goal-custom input{flex:1;padding:10px;border:2px solid var(--gray-200);border-radius:10px;font-size:14px;font-family:inherit;}
+  .goal-custom input{flex:1;padding:10px;border:2px solid var(--gray-200);border-radius:10px;font-size:16px;font-family:inherit;}
 
   /* ============================================================
      Contrail skin — glass-on-sky theme layered over the app above.
@@ -632,6 +639,7 @@
         <div class="ov-card"><div class="num" id="masteredNum">0</div><div class="label">완전 암기</div></div>
         <div class="ov-card"><div class="num" id="learningNum">0</div><div class="label">학습 중</div></div>
       </div>
+      <div class="day-status" id="dayStatus"></div>
 
       <button class="flight-card" id="flightCard">
         <div class="flight-top">
@@ -1085,10 +1093,16 @@ function getDayWords(dayIdx){
   const g = getDailyGoal();
   return WORDS.slice(dayIdx*g, (dayIdx+1)*g);
 }
+// Day를 순서대로 연다: 앞 Day의 단어를 전부 한 번 이상 학습하면 다음 Day가 열린다.
+// 이미 이 Day의 단어를 공부한 적이 있으면(예전 기록) 잠그지 않는다.
+function isDayStudied(dayIdx){
+  const dw = getDayWords(dayIdx);
+  return dw.length > 0 && dw.every(w=>state.words[w.id] && state.words[w.id].started);
+}
 function isDayUnlocked(dayIdx){
-  // Every Day is always open: learning never blocks a Day, and any Day (including
-  // ones already fully studied) can be revisited/re-studied at any time.
-  return true;
+  if(dayIdx === 0) return true;
+  if(isDayStudied(dayIdx-1)) return true;
+  return getDayWords(dayIdx).some(w=>state.words[w.id] && state.words[w.id].started);
 }
 
 function getWrongWords(){
@@ -1228,6 +1242,19 @@ function renderHome(){
   grid.innerHTML = "";
   const nDays = totalDays();
 
+  // 완전 학습(Day의 모든 단어가 완전 암기)과 학습 중(일부라도 시작했지만 아직 완전하지 않음) Day 목록
+  const fullDays = [], learningDays = [];
+  for(let i=0;i<nDays;i++){
+    const dw = getDayWords(i);
+    const started = dw.filter(w=>state.words[w.id] && state.words[w.id].started).length;
+    if(started === 0) continue;
+    if(dw.every(w=>state.words[w.id] && state.words[w.id].box >= MASTER_BOX)) fullDays.push(i+1); else learningDays.push(i+1);
+  }
+  const chips = (arr, cls)=> arr.length ? arr.map(n=>`<span class="ds-chip ${cls}">Day ${n}</span>`).join("") : `<span class="ds-none">아직 없어요</span>`;
+  document.getElementById("dayStatus").innerHTML =
+    `<div class="ds-row"><span class="ds-label">✅ 완전 학습</span>${chips(fullDays,"full")}</div>` +
+    `<div class="ds-row"><span class="ds-label">📖 학습 중</span>${chips(learningDays,"")}</div>`;
+
   // Days no longer "lock", so base the default preview size on how far the user has
   // actually progressed (last Day with any studied word), not on isDayUnlocked().
   let reachedCount = 0;
@@ -1252,12 +1279,14 @@ function renderHome(){
     const wrap = document.createElement("div");
     wrap.className = "day-item";
 
+    const unlocked = isDayUnlocked(d);
+    const tag = !unlocked ? "잠김" : fullDays.includes(d+1) ? "✅ 완전 학습" : learningDays.includes(d+1) ? "📖 학습 중" : "";
     const card = document.createElement("div");
-    card.className = "day-card";
+    card.className = "day-card" + (unlocked ? "" : " locked");
     card.innerHTML = `
-      <div class="day-icon">${d+1}</div>
+      <div class="day-icon">${unlocked ? d+1 : "🔒"}</div>
       <div class="day-body">
-        <div class="day-name">Day ${d+1}</div>
+        <div class="day-name">Day ${d+1}${tag ? `<span class="day-tag">${tag}</span>` : ""}</div>
         <div class="day-sub">${dayWords.length}개 단어 · ${masteredCount}개 완전 암기</div>
         <div class="progress-track"><div class="progress-fill" style="width:${pct}%;"></div></div>
       </div>
@@ -1265,7 +1294,10 @@ function renderHome(){
     `;
     // Every Day stays open forever, so this always restarts/re-studies that Day
     // (already-learned words will come back as sentence-building review, not a flat repeat).
-    card.addEventListener("click", ()=>{ startSession("Day " + (d+1), dayWords, false, true); });
+    card.addEventListener("click", ()=>{
+      if(!unlocked){ showModal("Day " + d + "의 단어를 모두 한 번 학습하면 이 Day가 열려요.", [{label:"확인", primary:true}]); return; }
+      startSession("Day " + (d+1), dayWords, false, true);
+    });
     wrap.appendChild(card);
 
     const vocabBtn = document.createElement("button");
@@ -2014,9 +2046,10 @@ function renderQuestion(){
     // 올바른 자리로 옮길 수 있게 함). 짧게 탭만 하면(실제로 끌지 않았으면) 기존처럼
     // 해당 칩을 단어 보관함으로 돌려보낸다.
     function wireAnswerChipDrag(chip, tileRef){
-      let startX = 0, startY = 0, dragging = false, moved = false;
+      let startX = 0, startY = 0, dragging = false, moved = false, lastSwap = null;
       function onDown(e){
-        if(chip.disabled) return;
+        if(chip.disabled || dragging) return;
+        lastSwap = null;
         startX = e.clientX; startY = e.clientY;
         dragging = true; moved = false;
         try{ chip.setPointerCapture(e.pointerId); }catch(err){}
@@ -2025,30 +2058,42 @@ function renderQuestion(){
       }
       function onMove(e){
         if(!dragging) return;
-        const dx = e.clientX - startX, dy = e.clientY - startY;
+        let dx = e.clientX - startX, dy = e.clientY - startY;
         if(Math.abs(dx) > 6 || Math.abs(dy) > 6) moved = true;
         chip.style.transform = "translate(" + dx + "px," + dy + "px)";
         if(!moved) return;
-        const myRect = chip.getBoundingClientRect();
-        const cx = myRect.left + myRect.width/2, cy = myRect.top + myRect.height/2;
-        const siblings = [...answerEl.children].filter(c=>c!==chip);
-        for(const sib of siblings){
-          const r = sib.getBoundingClientRect();
-          if(cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom){
-            const i1 = answerTiles.findIndex(t=>t.uid===tileRef.uid);
-            const i2 = answerTiles.findIndex(t=>String(t.uid)===String(sib.dataset.uid));
-            if(i1>-1 && i2>-1 && i1!==i2){
-              const tmp = answerTiles[i1]; answerTiles[i1] = answerTiles[i2]; answerTiles[i2] = tmp;
-              const sibRectBefore = sib.getBoundingClientRect();
-              if(i1 < i2) answerEl.insertBefore(sib, chip); else answerEl.insertBefore(chip, sib);
-              const sibRectAfter = sib.getBoundingClientRect();
-              // sib이 자리를 옮긴 만큼 드래그 기준점도 같이 보정해서, 드래그 중인
-              // 칩이 화면에서 순간이동하지 않고 손가락을 계속 따라오게 한다.
-              startX -= (sibRectAfter.left - sibRectBefore.left);
-            }
-            break;
-          }
-        }
+        // 손가락(포인터)이 올라간 다른 칩의 자리로 끌던 칩을 끼워 넣는다.
+        // 끌고 있는 칩 자체는 DOM에서 옮기지 않고(옮기면 손가락 추적이 끊겨 칩이 멈춘다)
+        // 나머지 칩들만 앞/뒤로 재배치한다.
+        const sib = [...answerEl.children].find(c=>{
+          if(c===chip) return false;
+          const r = c.getBoundingClientRect();
+          return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+        });
+        // 방금 자리를 바꾼 칩 위에 손가락이 아직 있으면 다시 바꾸지 않는다(폭이 다른 칩끼리
+        // 계속 서로 되돌려 보내며 튕기는 현상 방지). 그 칩을 벗어나면 다시 바꿀 수 있다.
+        if(!sib){ lastSwap = null; return; }
+        if(sib.dataset.uid === lastSwap) return;
+        lastSwap = sib.dataset.uid;
+        const i1 = answerTiles.findIndex(t=>t.uid===tileRef.uid);
+        const i2 = answerTiles.findIndex(t=>String(t.uid)===String(sib.dataset.uid));
+        if(i1<0 || i2<0 || i1===i2) return;
+        const before = chip.getBoundingClientRect();
+        const moving = answerTiles.splice(i1,1)[0];
+        answerTiles.splice(i2,0,moving);
+        const nodeByUid = {};
+        [...answerEl.children].forEach(c=>{ nodeByUid[c.dataset.uid] = c; });
+        const ordered = answerTiles.map(t=>nodeByUid[String(t.uid)]);
+        const at = ordered.indexOf(chip);
+        chip.before(...ordered.slice(0, at));
+        chip.after(...ordered.slice(at+1));
+        const after = chip.getBoundingClientRect();
+        // 칩의 원래 자리가 바뀐 만큼 기준점을 보정해서, 칩이 화면에서 튀지 않고
+        // 손가락을 계속 따라오게 한다.
+        startX += (after.left - before.left);
+        startY += (after.top - before.top);
+        dx = e.clientX - startX; dy = e.clientY - startY;
+        chip.style.transform = "translate(" + dx + "px," + dy + "px)";
       }
       function onUp(e){
         if(!dragging) return;
@@ -2067,6 +2112,7 @@ function renderQuestion(){
       chip.addEventListener("pointermove", onMove);
       chip.addEventListener("pointerup", onUp);
       chip.addEventListener("pointercancel", onUp);
+      chip.addEventListener("lostpointercapture", onUp);
     }
     function renderBuildTiles(){
       answerEl.innerHTML = "";
